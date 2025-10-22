@@ -53,3 +53,14 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Environment files with credentials (sensitive)
+.env.production
+
+# Lambda deployment artifacts (large files)
+lambda_package/
+lambda_deployment.zip
+
+# AWS policy files (generated at runtime)
+dynamodb-policy.json
+trust-policy.json

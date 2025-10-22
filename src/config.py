@@ -9,20 +9,22 @@ class Config:
     
     # CollaborateMD Configuration
     COLLABORATE_MD_BASE_URL: str = os.getenv(
-        'COLLABORATE_MD_BASE_URL', 
-        'https://webapi.collaboratemd.com'
+        'COLLABORATEMD_API_BASE_URL', 
+        'https://api.collaboratemd.com'
     )
-    COLLABORATE_MD_USERNAME: str = os.getenv('COLLABORATE_MD_USERNAME', '')
-    COLLABORATE_MD_PASSWORD: str = os.getenv('COLLABORATE_MD_PASSWORD', '')
-    COLLABORATE_MD_CUSTOMER: str = os.getenv('COLLABORATE_MD_CUSTOMER', '')
-    COLLABORATE_MD_REPORT_SEQ: str = os.getenv('COLLABORATE_MD_REPORT_SEQ', '')
-    COLLABORATE_MD_FILTER_SEQ: str = os.getenv('COLLABORATE_MD_FILTER_SEQ', '')
+    COLLABORATE_MD_USERNAME: str = os.getenv('COLLABORATEMD_USERNAME', '')
+    COLLABORATE_MD_PASSWORD: str = os.getenv('COLLABORATEMD_PASSWORD', '')
+    COLLABORATE_MD_CUSTOMER: str = os.getenv('COLLABORATEMD_CUSTOMER_NUMBER', '')
+    COLLABORATE_MD_REPORT_SEQ: str = os.getenv('COLLABORATEMD_REPORT_ID', '')
+    COLLABORATE_MD_FILTER_SEQ: str = os.getenv('COLLABORATEMD_FILTER_ID', '')
     
     # Salesforce Configuration
     SALESFORCE_INSTANCE_URL: str = os.getenv('SALESFORCE_INSTANCE_URL', '')
     SALESFORCE_USERNAME: str = os.getenv('SALESFORCE_USERNAME', '')
     SALESFORCE_PASSWORD: str = os.getenv('SALESFORCE_PASSWORD', '')
     SALESFORCE_SECURITY_TOKEN: str = os.getenv('SALESFORCE_SECURITY_TOKEN', '')
+    SALESFORCE_DOMAIN: str = os.getenv('SALESFORCE_DOMAIN', 'test')  # 'test' for sandbox, 'login' for production
+    SALESFORCE_API_VERSION: str = os.getenv('SALESFORCE_API_VERSION', '59.0')
     SALESFORCE_CONSUMER_KEY: str = os.getenv('SALESFORCE_CONSUMER_KEY', '')
     SALESFORCE_CONSUMER_SECRET: str = os.getenv('SALESFORCE_CONSUMER_SECRET', '')
     

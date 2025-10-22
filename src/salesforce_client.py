@@ -18,6 +18,7 @@ class SalesforceClient:
         self.username = Config.SALESFORCE_USERNAME
         self.password = Config.SALESFORCE_PASSWORD
         self.security_token = Config.SALESFORCE_SECURITY_TOKEN
+        self.domain = Config.SALESFORCE_DOMAIN
         self.consumer_key = Config.SALESFORCE_CONSUMER_KEY
         self.consumer_secret = Config.SALESFORCE_CONSUMER_SECRET
         self._sf_client = None
@@ -46,7 +47,7 @@ class SalesforceClient:
                     password=self.password,
                     consumer_key=self.consumer_key,
                     consumer_secret=self.consumer_secret,
-                    instance_url=self.instance_url
+                    domain=self.domain
                 )
             else:
                 # Fallback to username/password/token authentication
@@ -54,7 +55,7 @@ class SalesforceClient:
                     username=self.username,
                     password=self.password,
                     security_token=self.security_token,
-                    instance_url=self.instance_url
+                    domain=self.domain
                 )
             
             logger.info("Successfully authenticated with Salesforce")
