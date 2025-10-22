@@ -9,14 +9,14 @@ class Config:
     
     # CollaborateMD Configuration
     COLLABORATE_MD_BASE_URL: str = os.getenv(
-        'COLLABORATEMD_API_BASE_URL', 
+        'COLLABORATE_MD_API_BASE_URL', 
         'https://api.collaboratemd.com'
     )
-    COLLABORATE_MD_USERNAME: str = os.getenv('COLLABORATEMD_USERNAME', '')
-    COLLABORATE_MD_PASSWORD: str = os.getenv('COLLABORATEMD_PASSWORD', '')
-    COLLABORATE_MD_CUSTOMER: str = os.getenv('COLLABORATEMD_CUSTOMER_NUMBER', '')
-    COLLABORATE_MD_REPORT_SEQ: str = os.getenv('COLLABORATEMD_REPORT_ID', '')
-    COLLABORATE_MD_FILTER_SEQ: str = os.getenv('COLLABORATEMD_FILTER_ID', '')
+    COLLABORATE_MD_USERNAME: str = os.getenv('COLLABORATE_MD_USERNAME', '')
+    COLLABORATE_MD_PASSWORD: str = os.getenv('COLLABORATE_MD_PASSWORD', '')
+    COLLABORATE_MD_CUSTOMER: str = os.getenv('COLLABORATE_MD_CUSTOMER', '')
+    COLLABORATE_MD_REPORT_SEQ: str = os.getenv('COLLABORATE_MD_REPORT_SEQ', '')
+    COLLABORATE_MD_FILTER_SEQ: str = os.getenv('COLLABORATE_MD_FILTER_SEQ', '')
     
     # Salesforce Configuration
     SALESFORCE_INSTANCE_URL: str = os.getenv('SALESFORCE_INSTANCE_URL', '')
