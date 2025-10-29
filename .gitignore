@@ -59,8 +59,15 @@ htmlcov/
 
 # Lambda deployment artifacts (large files)
 lambda_package/
-lambda_deployment.zip
+lambda_package_new/
+lambda_deployment*.zip
 
 # AWS policy files (generated at runtime)
 dynamodb-policy.json
 trust-policy.json
+
+# Generated PDF documentation
+*.pdf
+
+# External service outputs
+.external_service_outputs/

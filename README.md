@@ -1,543 +1,612 @@
-# CollaborateMD to Salesforce Middleware
+# CollaborateMD - Salesforce Integration
 
-A robust AWS Lambda-based middleware solution for synchronizing claims data from CollaborateMD to Salesforce Claims__c objects.
+A comprehensive integration solution that syncs claims data from CollaborateMD Web API to Salesforce, enabling automated claims processing and management.
 
-## 🎯 Overview
+## 📋 Table of Contents
 
-This middleware automates the process of:
-1. **Fetching** claims data from CollaborateMD using their Reports API
-2. **Transforming** the data to match Salesforce Claims__c field structure
-3. **Syncing** transformed data to Salesforce in batches of 200 records
-4. **Tracking** sync state using DynamoDB for incremental updates
-5. **Handling** errors with exponential backoff retry logic
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Deployment](#deployment)
+- [Usage](#usage)
+- [Monitoring](#monitoring)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [Contributing](#contributing)
 
-### Key Features
+## 🔍 Overview
 
-- ✅ **Incremental Sync**: Tracks last sync timestamp to only fetch modified records
-- ✅ **Batch Processing**: Handles up to 700,000+ records efficiently in batches
-- ✅ **Error Recovery**: Exponential backoff retry logic for API failures
-- ✅ **State Management**: DynamoDB-based state tracking for reliability
-- ✅ **Comprehensive Logging**: Detailed logging for debugging and monitoring
-- ✅ **AWS Lambda Ready**: Optimized for serverless deployment
-- ✅ **Field Mapping**: Automatic transformation of CollaborateMD fields to Salesforce
+This integration connects CollaborateMD's claims management system with Salesforce, automatically syncing claims data to enable:
 
-## 📋 Prerequisites
-
-### Required Accounts & Access
-- **CollaborateMD**: Web API credentials with report access
-  - Username and Password
-  - Customer number (8 digits)
-  - Report sequence ID and Filter sequence ID
-- **Salesforce**: API access with Claims__c object permissions
-  - Username, Password, and Security Token
-  - Or OAuth2 Consumer Key/Secret
-- **AWS Account**: For Lambda, DynamoDB, and CloudWatch
-
-### Required Software (for local development)
-- Python 3.11 or higher
-- AWS CLI configured with appropriate credentials
-- Git (for version control)
-- pip (Python package manager)
+- **Automated Claims Sync**: Real-time synchronization of claims from CollaborateMD to Salesforce
+- **Batch Processing**: Efficient processing of large volumes of claims data
+- **Service Authorization Matching**: Automatic linking of claims to service authorization records
+- **Claim Payor Management**: Intelligent matching and creation of claim payor records
+- **Error Handling & Logging**: Comprehensive logging and error tracking via Integration_Log__c
 
 ## 🏗️ Architecture
 
+The integration consists of three main components:
+
+### 1. **AWS Lambda Middleware** (Python)
+- Fetches claims data from CollaborateMD Web API
+- Transforms data to Salesforce format
+- Manages sync state via DynamoDB
+- Handles authentication and retries
+
+### 2. **Salesforce Apex Classes**
+- **CollabBatch**: Batch Apex class that processes Service Authorization records
+- **ColborateMDRes**: Response wrapper class for parsing API JSON responses
+
+### 3. **CollaborateMD Web API**
+- Source system providing claims data
+- Report-based API with configurable filters
+
 ```
 ┌─────────────────┐
-│  AWS Lambda     │
-│  (Python 3.11)  │
+│ CollaborateMD   │
+│    Web API      │
 └────────┬────────┘
          │
-         ├──────────────┐
-         │              │
-         ▼              ▼
-┌─────────────────┐  ┌─────────────────┐
-│ CollaborateMD   │  │  Salesforce     │
-│   Reports API   │  │   REST API      │
-└─────────────────┘  └─────────────────┘
-         │              ▲
-         │              │
-         ▼              │
-    [Transform Data]────┘
+         ▼
+┌─────────────────┐       ┌──────────────┐
+│  AWS Lambda     │◄─────►│  DynamoDB    │
+│  (Middleware)   │       │ (State Mgmt) │
+└────────┬────────┘       └──────────────┘
          │
          ▼
 ┌─────────────────┐
-│   DynamoDB      │
-│  (State Store)  │
+│   Salesforce    │
+│  (Apex Batch)   │
 └─────────────────┘
 ```
 
-## 📁 Project Structure
+## ✨ Features
 
-```
-collaboratemd-salesforce-middleware/
-├── src/
-│   ├── __init__.py
-│   ├── config.py                    # Configuration management
-│   ├── logger.py                    # Logging setup
-│   ├── utils.py                     # Utility functions (retry, chunking)
-│   ├── collaboratemd_client.py      # CollaborateMD API client
-│   ├── salesforce_client.py         # Salesforce API client
-│   ├── data_transformer.py          # Data transformation logic
-│   └── state_manager.py             # DynamoDB state management
-├── scripts/
-│   ├── deploy.sh                    # Deployment script
-│   ├── create_lambda.sh             # Lambda creation script
-│   └── test_lambda.sh               # Testing script
-├── tests/                           # Unit tests (to be added)
-├── lambda_handler.py                # Main Lambda entry point
-├── requirements.txt                 # Python dependencies
-├── .env.example                     # Example environment variables
-├── .gitignore                       # Git ignore rules
-└── README.md                        # This file
-```
+### Data Synchronization
+- ✅ Bi-directional sync support (currently one-way: CollaborateMD → Salesforce)
+- ✅ Incremental sync based on last modified timestamp
+- ✅ Full sync capability for initial data load
+- ✅ Automatic duplicate detection and upsert logic
 
-## 🚀 Quick Start
+### Processing
+- ✅ Batch processing for high-volume claims
+- ✅ Configurable batch sizes
+- ✅ Retry logic with exponential backoff
+- ✅ Concurrent processing support
 
-### 1. Clone and Setup
+### Monitoring & Logging
+- ✅ Integration logs stored in Salesforce (Integration_Log__c)
+- ✅ CloudWatch logs for Lambda execution
+- ✅ Success/failure metrics
+- ✅ Error notifications
+
+## 📦 Prerequisites
+
+### Required Accounts & Access
+1. **CollaborateMD**
+   - Web API access
+   - Valid username and password
+   - Report ID and Filter ID configured
+
+2. **Salesforce**
+   - Salesforce org (Sandbox or Production)
+   - System Administrator access
+   - API access enabled
+
+3. **AWS Account**
+   - Lambda function creation permissions
+   - DynamoDB table creation permissions
+   - IAM role creation permissions
+   - CloudWatch Logs access
+
+### Required Software (for local development)
+- Python 3.9+
+- pip
+- AWS CLI (configured)
+- Salesforce CLI (sfdx)
+- Git
+
+## 🚀 Installation
+
+### Step 1: Clone the Repository
 
 ```bash
-# Navigate to project directory
-cd /home/ubuntu/collaboratemd-salesforce-middleware
+git clone https://github.com/nelser-svg/collaborateFSBHintegration.git
+cd collaborateFSBHintegration
+```
 
+### Step 2: Install Python Dependencies
+
+```bash
 # Create virtual environment
-python3 -m venv venv
+python -m venv venv
+
+# Activate virtual environment
+# On Linux/Mac:
 source venv/bin/activate
+# On Windows:
+venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment Variables
+### Step 3: Configure Environment Variables
 
 ```bash
 # Copy example environment file
 cp .env.example .env
 
 # Edit .env with your credentials
-nano .env
+nano .env  # or use your preferred editor
 ```
 
-Required environment variables:
+Fill in the required values:
 
 ```bash
 # CollaborateMD Configuration
-COLLABORATE_MD_USERNAME=your_username
-COLLABORATE_MD_PASSWORD=your_password
-COLLABORATE_MD_CUSTOMER=10001001
-COLLABORATE_MD_REPORT_SEQ=10001234
-COLLABORATE_MD_FILTER_SEQ=10004321
+COLLABORATEMD_API_BASE_URL=https://api.collaboratemd.com
+COLLABORATEMD_USERNAME=your_username
+COLLABORATEMD_PASSWORD=your_password
+COLLABORATEMD_CUSTOMER=your_customer_id
+COLLABORATEMD_REPORT_ID=10060198
+COLLABORATEMD_FILTER_ID=10060198
 
 # Salesforce Configuration
-SALESFORCE_INSTANCE_URL=https://your-instance.salesforce.com
-SALESFORCE_USERNAME=your_salesforce_username
-SALESFORCE_PASSWORD=your_salesforce_password
+SALESFORCE_USERNAME=your_salesforce_username@company.com
+SALESFORCE_PASSWORD=your_password
 SALESFORCE_SECURITY_TOKEN=your_security_token
+SALESFORCE_DOMAIN=test  # 'test' for sandbox, 'login' for production
 
 # Processing Configuration
-BATCH_SIZE=200
-MAX_RETRIES=3
+BATCH_SIZE=100
+STATE_TABLE_NAME=collaboratemd-state
 LOG_LEVEL=INFO
-
-# AWS Configuration
-DYNAMODB_TABLE_NAME=collaboratemd-sync-state
-AWS_REGION=us-east-1
 ```
 
-### 3. Deploy to AWS Lambda
+## ⚙️ Configuration
 
-#### Option A: Automated Deployment (Recommended)
+### Salesforce Setup
+
+#### 1. Deploy Apex Classes
 
 ```bash
-# Create all resources (Lambda, IAM role, DynamoDB)
-./scripts/create_lambda.sh
+# Authenticate to Salesforce
+sfdx auth:web:login --setalias myorg --instanceurl https://test.salesforce.com
 
-# Update environment variables via AWS CLI
-aws lambda update-function-configuration \
-  --function-name collaboratemd-salesforce-sync \
-  --environment Variables="{
-    COLLABORATE_MD_USERNAME=your_username,
-    COLLABORATE_MD_PASSWORD=your_password,
-    COLLABORATE_MD_CUSTOMER=10001001,
-    COLLABORATE_MD_REPORT_SEQ=10001234,
-    COLLABORATE_MD_FILTER_SEQ=10004321,
-    SALESFORCE_INSTANCE_URL=https://your-instance.salesforce.com,
-    SALESFORCE_USERNAME=your_salesforce_username,
-    SALESFORCE_PASSWORD=your_salesforce_password,
-    SALESFORCE_SECURITY_TOKEN=your_security_token,
-    BATCH_SIZE=200,
-    LOG_LEVEL=INFO
-  }" \
-  --region us-east-1
+# Deploy Apex classes
+sfdx force:source:deploy \
+  --sourcepath salesforce/force-app/main/default/classes \
+  --targetusername myorg
 ```
 
-#### Option B: Manual Deployment
+Or use the Python deployment script:
 
-1. **Create IAM Role** with these policies:
-   - `AWSLambdaBasicExecutionRole`
-   - Custom policy for DynamoDB access
+```bash
+python scripts/deploy_salesforce.py
+```
 
-2. **Create DynamoDB Table**:
+#### 2. Create Integration_Log__c Custom Fields
+
+Navigate to: **Setup → Object Manager → Integration_Log__c → Fields & Relationships → New**
+
+Create these fields:
+
+| Field Name | Type | Length/Options | Required |
+|------------|------|----------------|----------|
+| Integration_Type__c | Text | 100 | No |
+| Status__c | Picklist | Success, Error, Warning | No |
+| Request_Payload__c | Long Text Area | 32,000 | No |
+| Response_Payload__c | Long Text Area | 32,000 | No |
+| Error_Message__c | Long Text Area | 5,000 | No |
+| Timestamp__c | Date/Time | - | No |
+| Related_Record_Id__c | Text | 18 | No |
+
+#### 3. Configure Named Credentials
+
+**Path:** Setup → Named Credentials → New Named Credential
+
+```
+Label: Claims API
+Name: Claims_API
+URL: https://api.collaboratemd.com
+Identity Type: Named Principal
+Authentication Protocol: Password Authentication
+Username: [Your CollaborateMD Username]
+Password: [Your CollaborateMD Password]
+```
+
+#### 4. Configure Remote Site Settings
+
+**Path:** Setup → Remote Site Settings → New Remote Site
+
+```
+Remote Site Name: CollaborateMD_API
+Remote Site URL: https://api.collaboratemd.com
+Active: ✅ Checked
+```
+
+### AWS Setup
+
+#### 1. Create DynamoDB Table
+
 ```bash
 aws dynamodb create-table \
-  --table-name collaboratemd-sync-state \
-  --attribute-definitions AttributeName=sync_id,AttributeType=S \
-  --key-schema AttributeName=sync_id,KeyType=HASH \
+  --table-name collaboratemd-state \
+  --attribute-definitions \
+    AttributeName=id,AttributeType=S \
+  --key-schema \
+    AttributeName=id,KeyType=HASH \
   --billing-mode PAY_PER_REQUEST \
   --region us-east-1
 ```
 
-3. **Deploy Lambda**:
+#### 2. Create IAM Role for Lambda
+
 ```bash
-./scripts/deploy.sh
+# Create trust policy
+cat > trust-policy.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Service": "lambda.amazonaws.com"
+    },
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF
+
+# Create role
+aws iam create-role \
+  --role-name collaboratemd-lambda-role \
+  --assume-role-policy-document file://trust-policy.json
+
+# Attach policies
+aws iam attach-role-policy \
+  --role-name collaboratemd-lambda-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+aws iam attach-role-policy \
+  --role-name collaboratemd-lambda-role \
+  --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
 ```
 
-### 4. Test the Function
+#### 3. Build Lambda Package
 
 ```bash
-# Test via AWS CLI
-./scripts/test_lambda.sh
+# Run the build script
+./scripts/build_lambda_package_docker.sh
+```
 
-# Or invoke directly
+Or manually:
+
+```bash
+# Create package directory
+mkdir -p lambda_package
+
+# Install dependencies
+pip install -r requirements.txt -t lambda_package/
+
+# Copy source code
+cp -r src lambda_package/
+cp lambda_handler.py lambda_package/
+
+# Create zip file
+cd lambda_package
+zip -r ../lambda_deployment.zip .
+cd ..
+```
+
+#### 4. Deploy Lambda Function
+
+```bash
+# Using AWS CLI
+aws lambda create-function \
+  --function-name collaboratemd-salesforce-sync \
+  --runtime python3.9 \
+  --role arn:aws:iam::YOUR_ACCOUNT_ID:role/collaboratemd-lambda-role \
+  --handler lambda_handler.lambda_handler \
+  --zip-file fileb://lambda_deployment.zip \
+  --timeout 900 \
+  --memory-size 512 \
+  --environment Variables="{
+    COLLABORATEMD_USERNAME=your_username,
+    COLLABORATEMD_PASSWORD=your_password,
+    COLLABORATEMD_REPORT_ID=10060198,
+    COLLABORATEMD_FILTER_ID=10060198,
+    SALESFORCE_USERNAME=your_sf_username,
+    SALESFORCE_PASSWORD=your_sf_password,
+    SALESFORCE_SECURITY_TOKEN=your_sf_token,
+    STATE_TABLE_NAME=collaboratemd-state
+  }"
+```
+
+Or use the automated script:
+
+```bash
+python scripts/aws_deploy_simplified.py
+```
+
+## 📖 Usage
+
+### Running the Lambda Function
+
+#### Trigger Manually (AWS Console)
+1. Navigate to AWS Lambda console
+2. Select the function
+3. Click "Test"
+4. Use this test event:
+```json
+{
+  "full_sync": false
+}
+```
+
+#### Trigger via AWS CLI
+```bash
 aws lambda invoke \
   --function-name collaboratemd-salesforce-sync \
   --payload '{"full_sync": false}' \
-  --region us-east-1 \
   response.json
+
+cat response.json
 ```
 
-### 5. Schedule Recurring Sync
-
-Create EventBridge rule for automated syncs:
-
+#### Schedule with EventBridge
 ```bash
-# Create rule for daily sync at 2 AM UTC
+# Create rule for daily execution at 2 AM
 aws events put-rule \
-  --name "collaboratemd-daily-sync" \
-  --schedule-expression "cron(0 2 * * ? *)" \
-  --region us-east-1
+  --name collaboratemd-daily-sync \
+  --schedule-expression "cron(0 2 * * ? *)"
 
 # Add Lambda as target
 aws events put-targets \
-  --rule "collaboratemd-daily-sync" \
-  --targets "Id"="1","Arn"="arn:aws:lambda:us-east-1:ACCOUNT_ID:function:collaboratemd-salesforce-sync" \
-  --region us-east-1
+  --rule collaboratemd-daily-sync \
+  --targets "Id"="1","Arn"="arn:aws:lambda:us-east-1:ACCOUNT_ID:function:collaboratemd-salesforce-sync"
 
-# Grant EventBridge permission to invoke Lambda
+# Grant permission
 aws lambda add-permission \
   --function-name collaboratemd-salesforce-sync \
-  --statement-id "EventBridgeInvoke" \
-  --action "lambda:InvokeFunction" \
+  --statement-id collaboratemd-daily-sync \
+  --action lambda:InvokeFunction \
   --principal events.amazonaws.com \
-  --source-arn "arn:aws:events:us-east-1:ACCOUNT_ID:rule/collaboratemd-daily-sync"
+  --source-arn arn:aws:events:us-east-1:ACCOUNT_ID:rule/collaboratemd-daily-sync
 ```
 
-## 🔧 Configuration
+### Running the Salesforce Batch Job
 
-### Environment Variables Reference
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `COLLABORATE_MD_BASE_URL` | No | `https://webapi.collaboratemd.com` | CollaborateMD API base URL |
-| `COLLABORATE_MD_USERNAME` | **Yes** | - | CollaborateMD API username |
-| `COLLABORATE_MD_PASSWORD` | **Yes** | - | CollaborateMD API password |
-| `COLLABORATE_MD_CUSTOMER` | **Yes** | - | 8-digit customer number |
-| `COLLABORATE_MD_REPORT_SEQ` | **Yes** | - | Report sequence ID |
-| `COLLABORATE_MD_FILTER_SEQ` | **Yes** | - | Filter sequence ID |
-| `SALESFORCE_INSTANCE_URL` | **Yes** | - | Salesforce instance URL |
-| `SALESFORCE_USERNAME` | **Yes** | - | Salesforce username |
-| `SALESFORCE_PASSWORD` | **Yes** | - | Salesforce password |
-| `SALESFORCE_SECURITY_TOKEN` | **Yes** | - | Salesforce security token |
-| `SALESFORCE_CONSUMER_KEY` | No | - | OAuth2 consumer key (optional) |
-| `SALESFORCE_CONSUMER_SECRET` | No | - | OAuth2 consumer secret (optional) |
-| `BATCH_SIZE` | No | `200` | Records per batch for Salesforce |
-| `MAX_RETRIES` | No | `3` | Maximum retry attempts |
-| `RETRY_BACKOFF_FACTOR` | No | `2.0` | Exponential backoff multiplier |
-| `INITIAL_RETRY_DELAY` | No | `1.0` | Initial retry delay (seconds) |
-| `DYNAMODB_TABLE_NAME` | No | `collaboratemd-sync-state` | DynamoDB table name |
-| `AWS_REGION` | No | `us-east-1` | AWS region |
-| `LOG_LEVEL` | No | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
-
-### CollaborateMD Report Setup
-
-1. **Log into CollaborateMD** web application
-2. **Navigate to** Reports → Central Business Intelligence
-3. **Create custom report** with these fields:
-   - ClaimID
-   - PateintNameID
-   - ClaimPrimaryPayerName
-   - PayerID
-   - PrimaryAuth
-   - StatementCoversFromDate
-   - StatementCoversToDate
-   - ClaimDateEntered
-   - ClaimTotalAmount
-   - ClaimAmountPaid
-   - ClaimBalance
-   - PaymentCheck
-   - PaymentReceived
-   - PatientReference
-4. **Save filter set** for the report
-5. **Note the Report Seq and Filter Seq** from the URL
-
-See [CollaborateMD Help Article](https://help.collaboratemd.com/help/web-reporting) for details.
-
-## 📊 Field Mappings
-
-### CollaborateMD → Salesforce Claims__c
-
-| CollaborateMD Field | Salesforce Field | Type | Notes |
-|---------------------|------------------|------|-------|
-| `ClaimID` | `Claim_Number__c` | Text | External ID for upsert |
-| `PateintNameID` | `Name` | Text | Record name |
-| `StatementCoversFromDate` | `DOS__c` | Date | Date of Service start |
-| `StatementCoversToDate` | `DOS_End__c` | Date | Date of Service end |
-| `ClaimDateEntered` | `Claim_Submitted_Date__c` | Date | Submission date |
-| `ClaimTotalAmount` | `Charged_Amount__c` | Currency | Total charges |
-| `ClaimAmountPaid` | `Paid_Amount__c` | Currency | Amount paid |
-| `ClaimBalance` | `Total_BDP__c` | Currency | Balance |
-| `PaymentCheck` | `EFT_or_Paper_Check__c` | Text | Payment reference |
-| `PaymentReceived` | `Paid_Date__c` | Date | Payment date |
-| `PrimaryAuth` | `Insurance_Authorization_Number__c` | Text | Auth number |
-| `PayerID` | `Payer__c` | Text | Payer ID |
-| `PatientReference` | `MR_Number__c` | Text | Medical record number |
-| `ClaimPrimaryPayerName` + `PayerID` | `Claim_Payor__c` | Lookup | Lookup to Claim_Payor__c |
-| Calculated | `Paid_Y_or_N__c` | Picklist | 'Yes' if paid, 'No' otherwise |
-
-## 🔍 Monitoring & Logging
-
-### CloudWatch Logs
-
-Logs are automatically sent to:
-```
-/aws/lambda/collaboratemd-salesforce-sync
+#### Execute Anonymous Apex
+```apex
+// Test the batch job
+CollabBatch batch = new CollabBatch();
+Database.executeBatch(batch, 200);
 ```
 
-### Log Levels
+#### Schedule the Batch Job
+```apex
+// Schedule to run daily at 2 AM
+String cronExp = '0 0 2 * * ?';
+String jobName = 'CollaborateMD Claims Sync';
+CollabBatch batch = new CollabBatch();
+System.schedule(jobName, cronExp, batch);
+```
 
-- **DEBUG**: Detailed information for diagnosing issues
-- **INFO**: General information about execution flow (default)
-- **WARNING**: Warnings about potential issues
-- **ERROR**: Errors that don't stop execution
-- **CRITICAL**: Fatal errors
+Or via Setup:
+1. **Setup → Apex Classes → Schedule Apex**
+2. Select "CollabBatch"
+3. Configure schedule
 
-### Viewing Logs
+## 📊 Monitoring
 
+### Salesforce Monitoring
+
+#### View Integration Logs
+```apex
+// Query recent logs
+List<Integration_Log__c> logs = [
+    SELECT Id, Status__c, Integration_Type__c, 
+           Error_Message__c, Timestamp__c
+    FROM Integration_Log__c 
+    ORDER BY CreatedDate DESC 
+    LIMIT 100
+];
+```
+
+#### Check Batch Job Status
+```apex
+// Query batch jobs
+List<AsyncApexJob> jobs = [
+    SELECT Id, Status, NumberOfErrors, 
+           JobItemsProcessed, TotalJobItems,
+           CreatedDate, CompletedDate
+    FROM AsyncApexJob
+    WHERE ApexClass.Name = 'CollabBatch'
+    ORDER BY CreatedDate DESC
+    LIMIT 10
+];
+```
+
+### AWS Monitoring
+
+#### View Lambda Logs
 ```bash
-# Via AWS CLI
+# Get recent logs
 aws logs tail /aws/lambda/collaboratemd-salesforce-sync --follow
-
-# Via AWS Console
-# Navigate to: CloudWatch → Log groups → /aws/lambda/collaboratemd-salesforce-sync
 ```
 
-### Metrics to Monitor
-
-- **Invocations**: Total executions
-- **Errors**: Failed executions
-- **Duration**: Execution time
-- **Throttles**: Rate-limited invocations
-- **DynamoDB**: Read/Write capacity usage
-
-## 🧪 Testing
-
-### Local Testing
-
+#### Check DynamoDB State
 ```bash
-# Activate virtual environment
-source venv/bin/activate
-
-# Set environment variables
-export $(cat .env | xargs)
-
-# Run local test
-python lambda_handler.py
+# Query sync state
+aws dynamodb get-item \
+  --table-name collaboratemd-state \
+  --key '{"id":{"S":"last_sync"}}'
 ```
 
-### Unit Tests (Future Enhancement)
-
-```bash
-# Install test dependencies
-pip install pytest pytest-cov
-
-# Run tests
-pytest tests/
-
-# Run with coverage
-pytest --cov=src tests/
-```
-
-## 🐛 Troubleshooting
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-#### 1. Authentication Failures
+#### Issue: Lambda Timeout
+**Symptoms:** Function times out before completing
 
-**CollaborateMD:**
-```
-Error: 401 Unauthorized
-```
-- Verify username and password are correct
-- Check Basic Auth encoding
-- Ensure API access is enabled for your account
+**Solutions:**
+- Increase timeout in Lambda configuration (max 15 minutes)
+- Reduce batch size
+- Check CollaborateMD API response time
 
-**Salesforce:**
-```
-SalesforceAuthenticationFailed
-```
-- Verify username, password, and security token
-- Check IP restrictions in Salesforce
-- Ensure user has API access enabled
+#### Issue: Salesforce Authentication Failed
+**Symptoms:** "INVALID_LOGIN" or "INVALID_SESSION_ID"
 
-#### 2. Report Not Running
+**Solutions:**
+- Verify credentials in environment variables
+- Check security token (reset if needed)
+- Verify IP restrictions in Salesforce
 
-```
-Error: Report execution timed out
-```
-- Report filters may be too broad
-- Narrow the date range in filter settings
-- Check CollaborateMD system status
+#### Issue: No Claims Synced
+**Symptoms:** Job runs successfully but no claims created
 
-#### 3. DynamoDB Errors
+**Solutions:**
+- Check Service Authorization records exist
+- Verify Authorization_Number__c is populated
+- Review Integration_Log__c for errors
+- Check Named Credential configuration
 
-```
-ResourceNotFoundException: Table not found
-```
-- Ensure DynamoDB table exists
-- Verify Lambda has DynamoDB permissions
-- Check region configuration
+#### Issue: Duplicate Claims Created
+**Symptoms:** Multiple claims with same Claim_Number__c
 
-#### 4. Salesforce Upsert Failures
-
-```
-Error: Field not found: Claim_Number__c
-```
-- Verify Claims__c object exists in Salesforce
-- Check all field API names match
-- Ensure user has field-level security access
+**Solutions:**
+- Verify upsert logic in batch class
+- Check external ID field configuration
+- Review batch execution logs
 
 ### Debug Mode
 
-Enable verbose logging:
+Enable detailed logging:
 
 ```bash
-aws lambda update-function-configuration \
-  --function-name collaboratemd-salesforce-sync \
-  --environment Variables='{..., LOG_LEVEL=DEBUG}' \
-  --region us-east-1
+# In .env
+LOG_LEVEL=DEBUG
 ```
 
-## 📈 Performance Optimization
+```apex
+// In Salesforce
+System.debug(LoggingLevel.DEBUG, 'Detailed message');
+```
 
-### For Large Datasets (>100K records)
+## 💻 Development
 
-1. **Increase Lambda Memory**: More memory = more CPU
-   ```bash
-   aws lambda update-function-configuration \
-     --function-name collaboratemd-salesforce-sync \
-     --memory-size 1024 \
-     --timeout 900
-   ```
+### Local Testing
 
-2. **Use Salesforce Bulk API**: For even larger batches
-   - Modify `salesforce_client.py` to use Bulk API v2
-   - Reference: [Salesforce Bulk API Documentation](https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/)
+#### Test Lambda Handler Locally
+```bash
+python lambda_handler.py
+```
 
-3. **Parallel Processing**: Split into multiple Lambda invocations
-   - Use Step Functions for orchestration
-   - Process date ranges in parallel
+#### Test Salesforce Classes
+Use Salesforce Developer Console:
+1. **Debug → Open Execute Anonymous Window**
+2. Run test code
+3. Check debug logs
 
-4. **Optimize DynamoDB**: 
-   - Use on-demand billing for unpredictable loads
-   - Or provision sufficient read/write capacity
+### Running Tests
 
-## 🔒 Security Best Practices
+#### Python Tests
+```bash
+pytest tests/
+```
 
-1. **Credentials Management**
-   - ✅ Store credentials in AWS Secrets Manager
-   - ✅ Rotate credentials regularly
-   - ✅ Use IAM roles with least privilege
+#### Apex Tests
+```bash
+sfdx force:apex:test:run --targetusername myorg --codecoverage --resultformat human
+```
 
-2. **Network Security**
-   - ✅ Deploy Lambda in VPC if required
-   - ✅ Use VPC endpoints for AWS services
-   - ✅ Restrict outbound traffic
+### Code Quality
 
-3. **Data Protection**
-   - ✅ Enable CloudWatch Logs encryption
-   - ✅ Use SSL/TLS for all API calls
-   - ✅ Sanitize logs to remove sensitive data
+```bash
+# Python linting
+pylint src/
 
-4. **Monitoring**
-   - ✅ Set up CloudWatch alarms
-   - ✅ Enable AWS CloudTrail
-   - ✅ Review logs regularly
+# Type checking
+mypy src/
+
+# Format code
+black src/
+```
+
+## 📁 Project Structure
+
+```
+collaboratemd-salesforce-middleware/
+├── src/                          # Python source code
+│   ├── __init__.py
+│   ├── config.py                # Configuration management
+│   ├── logger.py                # Logging setup
+│   ├── collaboratemd_client.py  # CollaborateMD API client
+│   ├── salesforce_client.py     # Salesforce API client
+│   ├── data_transformer.py      # Data transformation logic
+│   ├── state_manager.py         # DynamoDB state management
+│   └── utils.py                 # Utility functions
+├── salesforce/                   # Salesforce metadata
+│   └── force-app/
+│       └── main/
+│           └── default/
+│               └── classes/
+│                   ├── CollabBatch.cls
+│                   ├── CollabBatch.cls-meta.xml
+│                   ├── ColborateMDRes.cls
+│                   └── ColborateMDRes.cls-meta.xml
+├── scripts/                      # Deployment scripts
+│   ├── deploy_salesforce.py
+│   ├── aws_deploy_simplified.py
+│   ├── build_lambda_package_docker.sh
+│   └── deploy_lambda.sh
+├── docs/                         # Documentation
+│   ├── DEPLOYMENT_SUMMARY.md
+│   ├── PROJECT_SUMMARY.md
+│   └── QUICKSTART.md
+├── tests/                        # Test files
+├── lambda_handler.py            # Lambda entry point
+├── requirements.txt             # Python dependencies
+├── .env.example                 # Environment template
+├── .gitignore                   # Git ignore rules
+└── README.md                    # This file
+```
 
 ## 🤝 Contributing
 
-### Development Setup
+Contributions are welcome! Please follow these guidelines:
 
-```bash
-# Clone repository
-git clone <repository-url>
-cd collaboratemd-salesforce-middleware
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install development dependencies
-pip install pytest pytest-cov black flake8
-```
-
-### Code Style
-
-- Follow PEP 8 guidelines
-- Use type hints
-- Write docstrings for all functions
-- Keep functions focused and testable
-
-### Pull Request Process
-
-1. Create feature branch
-2. Write/update tests
-3. Ensure all tests pass
-4. Update documentation
-5. Submit PR with description
-
-## 📝 License
+## 📄 License
 
 This project is proprietary and confidential.
 
 ## 📞 Support
 
 For issues or questions:
-- Check the [Troubleshooting](#-troubleshooting) section
-- Review CloudWatch logs
-- Contact your system administrator
+- Email: support@yourcompany.com
+- Salesforce Org: firststepbh--dev.sandbox.my.salesforce.com
 
-## 🗺️ Roadmap
+## 🔄 Version History
 
-Future enhancements:
-- [ ] Unit and integration tests
-- [ ] Support for Salesforce Bulk API
-- [ ] Parallel processing with Step Functions
-- [ ] Webhook support for real-time sync
-- [ ] Enhanced error notification (SNS/Email)
-- [ ] Dashboard for sync statistics
-- [ ] Support for additional CollaborateMD objects
-
-## 📚 Additional Resources
-
-- [CollaborateMD API Documentation](https://help.collaboratemd.com/help/web-api)
-- [Salesforce REST API Guide](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/)
-- [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html)
-- [DynamoDB Developer Guide](https://docs.aws.amazon.com/dynamodb/index.html)
+### v1.0.0 (October 2025)
+- Initial release
+- AWS Lambda middleware implementation
+- Salesforce Apex batch processing
+- DynamoDB state management
+- Comprehensive logging and error handling
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: October 16, 2025  
-**Developed for**: AWS Lambda deployment with Python 3.11
+**Note:** This integration handles sensitive healthcare data. Ensure all security best practices are followed and comply with HIPAA regulations.

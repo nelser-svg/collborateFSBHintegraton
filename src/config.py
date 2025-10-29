@@ -9,14 +9,29 @@ class Config:
     
     # CollaborateMD Configuration
     COLLABORATE_MD_BASE_URL: str = os.getenv(
-        'COLLABORATE_MD_API_BASE_URL', 
-        'https://api.collaboratemd.com'
+        'COLLABORATEMD_API_BASE_URL',
+        os.getenv('COLLABORATE_MD_API_BASE_URL', 'https://api.collaboratemd.com')
     )
-    COLLABORATE_MD_USERNAME: str = os.getenv('COLLABORATE_MD_USERNAME', '')
-    COLLABORATE_MD_PASSWORD: str = os.getenv('COLLABORATE_MD_PASSWORD', '')
-    COLLABORATE_MD_CUSTOMER: str = os.getenv('COLLABORATE_MD_CUSTOMER', '')
-    COLLABORATE_MD_REPORT_SEQ: str = os.getenv('COLLABORATE_MD_REPORT_SEQ', '')
-    COLLABORATE_MD_FILTER_SEQ: str = os.getenv('COLLABORATE_MD_FILTER_SEQ', '')
+    COLLABORATE_MD_USERNAME: str = os.getenv(
+        'COLLABORATEMD_USERNAME',
+        os.getenv('COLLABORATE_MD_USERNAME', '')
+    )
+    COLLABORATE_MD_PASSWORD: str = os.getenv(
+        'COLLABORATEMD_PASSWORD',
+        os.getenv('COLLABORATE_MD_PASSWORD', '')
+    )
+    COLLABORATE_MD_CUSTOMER: str = os.getenv(
+        'COLLABORATEMD_CUSTOMER',
+        os.getenv('COLLABORATE_MD_CUSTOMER', '')
+    )
+    COLLABORATE_MD_REPORT_SEQ: str = os.getenv(
+        'COLLABORATEMD_REPORT_ID',
+        os.getenv('COLLABORATE_MD_REPORT_SEQ', '')
+    )
+    COLLABORATE_MD_FILTER_SEQ: str = os.getenv(
+        'COLLABORATEMD_FILTER_ID',
+        os.getenv('COLLABORATE_MD_FILTER_SEQ', '')
+    )
     
     # Salesforce Configuration
     SALESFORCE_INSTANCE_URL: str = os.getenv('SALESFORCE_INSTANCE_URL', '')
@@ -35,7 +50,10 @@ class Config:
     INITIAL_RETRY_DELAY: float = float(os.getenv('INITIAL_RETRY_DELAY', '1.0'))
     
     # DynamoDB Configuration (for state management)
-    DYNAMODB_TABLE_NAME: str = os.getenv('DYNAMODB_TABLE_NAME', 'collaboratemd-sync-state')
+    DYNAMODB_TABLE_NAME: str = os.getenv(
+        'STATE_TABLE_NAME',
+        os.getenv('DYNAMODB_TABLE_NAME', 'collaboratemd-sync-state')
+    )
     DYNAMODB_REGION: str = os.getenv('AWS_REGION', 'us-east-1')
     
     # Logging Configuration

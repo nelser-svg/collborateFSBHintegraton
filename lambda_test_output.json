@@ -1,0 +1,1 @@
+{"statusCode": 500, "body": "{\"message\": \"Sync failed\", \"error\": \"Missing required environment variables: COLLABORATE_MD_CUSTOMER, SALESFORCE_INSTANCE_URL\", \"timestamp\": \"2025-10-22T13:28:34.352972\"}"}

@@ -8,7 +8,7 @@ public class ColborateMDRes {
     public String StatusMessage {get; set;}
     
     public class data {
-        public String _id {get; set;}
+        public String id {get; set;}  // Renamed from _id
         public String UniqueKey {get; set;}
         public String PateintNameID {get; set;}
         public String ClaimPrimaryPayerName {get; set;}
@@ -30,6 +30,6 @@ public class ColborateMDRes {
         public String PatientReference {get; set;}
         public String createdAt {get; set;}
         public String updatedAt {get; set;}
-        public Integer __v {get; set;}
+        public Integer versionNumber {get; set;}  // Renamed from __v
     }
 }
