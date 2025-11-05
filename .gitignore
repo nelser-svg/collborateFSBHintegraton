@@ -60,7 +60,14 @@ htmlcov/
 # Lambda deployment artifacts (large files)
 lambda_package/
 lambda_package_new/
+lambda_deploy_package/
 lambda_deployment*.zip
+
+# Salesforce
+salesforce/.sfdx/
+salesforce/.sf/
+.sfdx/
+.sf/
 
 # AWS policy files (generated at runtime)
 dynamodb-policy.json
