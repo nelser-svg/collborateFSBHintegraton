@@ -1,0 +1,252 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CollaborateMD-Salesforce Integration - Complete AWS Infrastructure'
+
+Parameters:
+  CollaborateMDApiUrl:
+    Type: String
+    Default: 'https://ws.collaboratemd.com/api/v1'
+    Description: CollaborateMD API Base URL
+  
+  CollaborateMDUsername:
+    Type: String
+    Default: 'nicolasmd'
+    Description: CollaborateMD API Username
+  
+  CollaborateMDPassword:
+    Type: String
+    NoEcho: true
+    Default: 'Nic@2024!'
+    Description: CollaborateMD API Password
+
+Resources:
+  # Secrets Manager Secret for CollaborateMD Credentials
+  CollaborateMDSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: collaboratemd-credentials
+      Description: CollaborateMD API credentials for Lambda integration
+      SecretString: !Sub |
+        {
+          "api_url": "${CollaborateMDApiUrl}",
+          "username": "${CollaborateMDUsername}",
+          "password": "${CollaborateMDPassword}"
+        }
+
+  # IAM Role for Lambda Execution
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CollaborateMDLambdaRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: !Ref CollaborateMDSecret
+
+  # Lambda Function
+  CollaborateMDLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: CollaborateMD-Salesforce-Integration
+      Runtime: python3.11
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Handler: lambda_function.lambda_handler
+      Code:
+        ZipFile: |
+          import json
+          import os
+          from datetime import datetime
+          
+          def lambda_handler(event, context):
+              """CollaborateMD-Salesforce Integration Lambda Handler"""
+              
+              print("="*80)
+              print("CollaborateMD to Salesforce Sync - Lambda Function")
+              print("="*80)
+              
+              try:
+                  # Read configuration from environment
+                  collab_api_url = os.environ.get('COLLAB_API_URL')
+                  collab_username = os.environ.get('COLLAB_USERNAME')
+                  collab_password = os.environ.get('COLLAB_PASSWORD')
+                  
+                  if not all([collab_api_url, collab_username, collab_password]):
+                      return {
+                          'statusCode': 500,
+                          'headers': {
+                              'Content-Type': 'application/json',
+                              'Access-Control-Allow-Origin': '*'
+                          },
+                          'body': json.dumps({
+                              'error': 'Missing configuration',
+                              'message': 'Required environment variables not set'
+                          })
+                      }
+                  
+                  # Check if this is a full sync or incremental
+                  full_sync = event.get('full_sync', False)
+                  
+                  # Return success response
+                  return {
+                      'statusCode': 200,
+                      'headers': {
+                          'Content-Type': 'application/json',
+                          'Access-Control-Allow-Origin': '*'
+                      },
+                      'body': json.dumps({
+                          'message': 'CollaborateMD Lambda deployed successfully',
+                          'timestamp': datetime.utcnow().isoformat(),
+                          'status': 'Ready for integration',
+                          'sync_type': 'full' if full_sync else 'incremental',
+                          'configuration': {
+                              'api_url': collab_api_url,
+                              'username': collab_username,
+                              'password_configured': bool(collab_password)
+                          }
+                      }, default=str)
+                  }
+                  
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'headers': {
+                          'Content-Type': 'application/json',
+                          'Access-Control-Allow-Origin': '*'
+                      },
+                      'body': json.dumps({
+                          'error': str(e),
+                          'timestamp': datetime.utcnow().isoformat()
+                      }, default=str)
+                  }
+      Description: CollaborateMD to Salesforce integration Lambda function
+      Timeout: 60
+      MemorySize: 512
+      Environment:
+        Variables:
+          COLLAB_API_URL: !Ref CollaborateMDApiUrl
+          COLLAB_USERNAME: !Ref CollaborateMDUsername
+          COLLAB_PASSWORD: !Ref CollaborateMDPassword
+          SECRET_NAME: collaboratemd-credentials
+
+  # API Gateway HTTP API
+  CollaborateMDApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: CollaborateMD-API
+      Description: API Gateway for CollaborateMD-Salesforce integration
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  # Lambda Integration
+  LambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref CollaborateMDApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CollaborateMDLambdaFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  # API Routes
+  ClaimsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref CollaborateMDApi
+      RouteKey: POST /claims
+      Target: !Sub integrations/${LambdaIntegration}
+
+  StatusRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref CollaborateMDApi
+      RouteKey: GET /status
+      Target: !Sub integrations/${LambdaIntegration}
+
+  # API Stage (Auto-deploy)
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref CollaborateMDApi
+      StageName: $default
+      AutoDeploy: true
+
+  # Lambda Permission for API Gateway
+  ApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CollaborateMDLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CollaborateMDApi}/*/*
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt CollaborateMDLambdaFunction.Arn
+    Export:
+      Name: CollaborateMD-Lambda-ARN
+
+  LambdaFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref CollaborateMDLambdaFunction
+    Export:
+      Name: CollaborateMD-Lambda-Name
+
+  LambdaRoleArn:
+    Description: ARN of the Lambda execution role
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: CollaborateMD-Lambda-Role-ARN
+
+  SecretArn:
+    Description: ARN of the Secrets Manager secret
+    Value: !Ref CollaborateMDSecret
+    Export:
+      Name: CollaborateMD-Secret-ARN
+
+  ApiGatewayId:
+    Description: ID of the API Gateway
+    Value: !Ref CollaborateMDApi
+    Export:
+      Name: CollaborateMD-API-ID
+
+  ApiGatewayEndpoint:
+    Description: API Gateway endpoint URL (ADD THIS TO SALESFORCE)
+    Value: !GetAtt CollaborateMDApi.ApiEndpoint
+    Export:
+      Name: CollaborateMD-API-Endpoint
+
+  ApiGatewayClaimsUrl:
+    Description: Full URL for claims endpoint
+    Value: !Sub '${CollaborateMDApi.ApiEndpoint}/claims'
+    Export:
+      Name: CollaborateMD-API-Claims-URL
+
+  ApiGatewayStatusUrl:
+    Description: Full URL for status endpoint
+    Value: !Sub '${CollaborateMDApi.ApiEndpoint}/status'
+    Export:
+      Name: CollaborateMD-API-Status-URL
