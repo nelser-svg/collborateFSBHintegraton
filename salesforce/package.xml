@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>ClaimsIntegrationRestService</members>
+        <members>ClaimsIntegrationRestServiceTest</members>
+        <members>ClaimsIntegrationService</members>
+        <members>ClaimsIntegrationServiceTest</members>
+        <members>CollaborateMDSyncBatch</members>
+        <members>CollaborateMDSyncBatchTest</members>
+        <members>IntegrationLogger</members>
+        <members>IntegrationLoggerTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>59.0</version>
+</Package>
