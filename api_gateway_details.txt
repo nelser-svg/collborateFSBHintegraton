@@ -1,0 +1,13 @@
+API Gateway Details
+===================
+API ID: 7f391vyde4
+API Endpoint: https://7f391vyde4.execute-api.us-east-1.amazonaws.com/prod/sync
+Stage: prod
+Method: POST
+Lambda Function: collaboratemd-salesforce-sync
+Region: us-east-1
+
+Test Command:
+curl -X POST https://7f391vyde4.execute-api.us-east-1.amazonaws.com/prod/sync \
+  -H "Content-Type: application/json" \
+  -d '{"full_sync": false}'
